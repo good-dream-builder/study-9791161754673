@@ -1,0 +1,96 @@
+app:
+#  eureka-server: localhost
+  auth-server: localhost
+
+#eureka:
+#  client:
+#    serviceUrl:
+#      defaultZone: "http://${app.eureka-server}:8761/eureka/"
+#    # 이하 시작 시간과 중지된 마이크로서비스 인스턴스의 등록 해제에 걸리는 시간을 최소화하기 위한 것
+#    initialInstanceInfoReplicationIntervalSeconds: 5
+#    registryFetchIntervalSeconds: 5
+#  instance:
+#    leaseRenewalIntervalInSeconds: 5
+#    leaseExpirationDurationInSeconds: 5
+
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: 127.0.0.1
+          defaultBrokerPort: 9092
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+#    username: guest
+#    password: guest
+#    password: '{cipher}17fcf0ae5b8c5cf87de6875b699be4a1746dd493a99d926c7a26a68c422117ef'
+
+  # 집킨으로 추적 정보를 보낼 때 RabbitMQ 사용
+  zipkin:
+    sender:
+      type: rabbit
+
+  # 전체 추적 정보를 집킨으로 보냄
+  sleuth:
+    sampler:
+      probability: 1.0
+
+# WARNING: Exposing all management endpoints over http should only be used during development, must be locked down in production!
+# 스프링 부트 액추에이터 구성
+management:
+  endpoints:
+    web:
+      exposure:
+        # UP, DOWN 결과뿐만 아니라 의존성에 대한 정보가 포함된 상태 점검 세부 정보를 표시
+        include: "*"
+  endpoint:
+    health:
+      #  HTTP를 사용해 모든 엔드포인트를 공개
+      show-details: always
+
+---
+spring:
+  profiles: docker
+  rabbitmq:
+    host: rabbitmq
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: kafka
+app:
+#  eureka-server: eureka
+  auth-server: auth
+
+---
+# 카프카를 메시징 브로커로 사용하기 위한 속성
+spring:
+  profiles: kafka
+  cloud:
+    stream:
+      defaultBinder: kafka
+  kafka: # kafka 서버의 위치
+    bootstrap-servers: kafka:9092
+  # 카프카를 사용해 집킨으로 추적 정보를 보냄
+  zipkin:
+    sender:
+      type: kafka
+
+management:
+  health:
+    rabbit:
+      enabled: false
+---
+spring:
+  profiles: prod
+  rabbitmq:
+    host: 172.17.0.1
+
+# Only allow management endpoints over http in production for info, health and circuitbreakerevents
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakerevents

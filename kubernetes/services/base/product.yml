@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment # 디플로이먼트 객체
+metadata:
+  name: product
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product
+  template: # 포드 생성 방법을 지정
+    metadata:
+      labels:
+        app: product
+    spec:
+      containers:
+      - name: pro
+        image: my-space/product-service
+        imagePullPolicy: Never # 쿠버네티스는 도커 이미지를 도커 레지스트리에서 다운로드하지 않는다
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "docker" # docker 스프링 프로필을 사용
+        - name: SPRING_CONFIG_LOCATION
+          value: file:/config-repo/application.yml,file:/config-repo/product.yml
+        envFrom: # RabbitMQ와 MongoDB 접근을 위한 자격 증명
+          - secretRef:
+              name: rabbitmq-credentials
+          - secretRef:
+              name: mongodb-credentials
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: 512Mi # 최대 512MB까지만 메모리를 사용
+          requests:
+            memory: 512Mi
+        livenessProbe: # 비정상이라서 200 OK가 아닌 경우 쿠버네티스는 마이크로서비스 인스턴스를 다시 시작
+          httpGet:
+            scheme: HTTP
+            path: /actuator/info # 스프링 부트 액추에이터의 정보
+            port: 80
+          initialDelaySeconds: 10 # 컨테이너가 시작한 후 검사(probe) 시작 전까지 대기하는 시간
+          periodSeconds: 10 # 검사 요청 간격
+          timeoutSeconds: 2 # 검사를 실패한 것으로 처리하기 전에 응답을 기다리는 시간
+          failureThreshold: 20 # 검사를 실패한 것으로 처리하기 전에 응답을 기다리는 시간
+          successThreshold: 1 # 실패한 검사를 다시 성공으로 간주하게 하려면 검사에 몇 번 성공해야 하는지
+        readinessProbe: # 200 OK로 응답하는 경우에만 마이크로서비스 인스턴스에 요청
+          httpGet:
+            scheme: HTTP
+            path: /actuator/health # 스프링 부트 액추에이터의 상태 점검
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+          successThreshold: 1
+        volumeMounts: # config-repo-volume 볼륨을 파일 시스템 /config-repo에 마운트
+          - name: config-repo-volume
+            mountPath: /config-repo
+      volumes: # config-repo-product 컨피그 맵을 config-repo-volume 볼륨에 매핑
+        - name: config-repo-volume
+          configMap:
+            name: config-repo-product
+---
+apiVersion: v1
+kind: Service # 서비스 객체
+metadata:
+  name: product
+spec:
+  selector:
+    app: product
+  ports:
+  - port: 80
+    targetPort: 80

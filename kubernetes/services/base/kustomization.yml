@@ -1,0 +1,13 @@
+resources:
+#- config.yml
+#- gateway.yml
+- ingress-edge-server.yml
+- auth-server.yml
+- product-composite.yml
+- product.yml
+- recommendation.yml
+- review.yml
+- zipkin.yml
+- mongodb.yml
+- rabbitmq.yml
+- mysql.yml

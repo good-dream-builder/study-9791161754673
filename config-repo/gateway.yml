@@ -1,0 +1,113 @@
+server:
+  port: 8443
+  ssl:
+    key-store-type: PKCS12
+    key-store: classpath:keystore/edge.p12
+    key-alias: localhost
+#    key-store-password: '{cipher}f59a7a40ddbf79dff638480be6f1e4d79c0518fde989ab3b68ef5e32d5ae25f5'
+
+#app:
+#  config-server: localhost
+
+spring:
+  cloud:
+    gateway:
+      routes: # Java DSL 규칙으로 작성
+        - id: product-composite # 경로 이름
+          uri: http://product-composite
+          predicates: # 라우팅 규칙이 처리할 요청
+            - Path=/product-composite/** # ** : 0개 이상의 문자와 일치
+        
+        # 인증 서버
+        - id: oauth
+          uri: http://${app.auth}
+          predicates:
+            - Path=/oauth/**
+
+#        # 검색 서버
+#        - id: eureka-api
+#          uri: http://${app.eureka-server}:8761
+#          predicates:
+#            - Path=/eureka/api/{segment} # {segment} : 0개 이상의 문자와 일치
+#          filters:
+#            - SetPath=/eureka/{segment}
+#
+#        - id: eureka-web-start
+#          uri: http://${app.eureka-server}:8761
+#          predicates:
+#            - Path=/eureka/web
+#          filters:
+#            - SetPath=/
+#
+#        - id: eureka-web-other
+#          uri: http://${app.eureka-server}:8761
+#          predicates:
+#            - Path=/eureka/**
+        
+#        # 구성서버
+#        - id: config-server
+#          uri: http://${app.config-server}:8888
+#          predicates:
+#            - Path=/config/**
+#          filters: # RewritePath 필터 : URL에서 /config의 앞 부분을 제거한 후 구성 서버로 보낸다
+#            - RewritePath=/config/(?<segment>.*), /$\{segment}
+
+#        - id: host_route_200
+#          uri: http://httpstat.us
+#          predicates:
+#            - Host=i.feel.lucky:8080
+#            - Path=/headerrouting/**
+#          filters:
+#            - SetPath=/200
+#
+#        - id: host_route_418
+#          uri: http://httpstat.us
+#          predicates:
+#            - Host=im.a.teapot:8080
+#            - Path=/headerrouting/**
+#          filters:
+#            - SetPath=/418
+#
+#        - id: host_route_501
+#          uri: http://httpstat.us
+#          predicates:
+#            - Path=/headerrouting/**
+#          filters:
+#            - SetPath=/501
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://${app.auth}/.well-known/jwks.json
+
+
+
+# 시작 시간을 최소화하기 위한 것
+ribbon:
+  ServerListRefreshInterval: 5000
+  NFLoadBalancerPingInterval: 5
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: INFO
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.web.server.adapter.HttpWebHandlerAdapter: TRACE
+
+#---
+#spring:
+#  profiles: docker
+#
+#app:
+#  config-server: config
+
+---
+spring:
+  profiles: prod
+
+logging:
+  level:
+    root: WARN
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: WARN
+    org.springframework.cloud.gateway: WARN
+    org.springframework.web.server.adapter.HttpWebHandlerAdapter: WARN

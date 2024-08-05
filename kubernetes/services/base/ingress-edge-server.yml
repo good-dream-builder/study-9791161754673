@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: nginx
+spec:
+  controller: k8s.io/ingress-nginx
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edge # 인그레스 리소스의 이름
+  namespace: my-space
+spec:
+  ingressClassName: nginx # IngressClass 명시
+  tls: # HTTPS를 사용하며, kubernetes.docker.internal 호스트 이름으로 발급한 인증서를 사용
+    - hosts:
+        - songko.com
+      secretName: tls-certificate # 인증서는 tls-certificate라는 이름의 시크릿에 저장
+  rules: # 라우팅 규칙을 정의
+    - host: songko.com # 호스트명
+      http:
+        paths:
+          - path: /oauth # 서비스의 URL
+            pathType: Prefix
+            backend:
+              service:
+                name: auth # 서비스 명
+                port:
+                  number: 80
+          - path: /product-composite
+            pathType: Prefix
+            backend:
+              service:
+                name: product-composite
+                port:
+                  number: 80
+          - path: /actuator/health # 상태 점검 엔드포인트
+            pathType: Prefix
+            backend:
+              service:
+                name: product-composite
+                port:
+                  number: 80

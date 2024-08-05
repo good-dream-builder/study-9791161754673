@@ -1,0 +1,10 @@
+bases:
+  - ../../base
+patchesStrategicMerge:
+#  - config-prod.yml
+#  - gateway-prod.yml
+  - product-composite-prod.yml
+  - product-prod.yml
+  - recommendation-prod.yml
+  - review-prod.yml
+#  - zipkin-prod.yml

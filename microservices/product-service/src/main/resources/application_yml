@@ -1,0 +1,99 @@
+server:
+  port: 7001
+  error:
+    include-message: always
+
+app:
+  eureka-username: u
+  eureka-password: p
+  eureka-server: localhost
+
+spring:
+  application:
+    name: product
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: product-db
+  cloud:
+    stream:
+      defaultBinder: rabbit
+      default:
+        contentType: application/json
+      bindings:
+        input:
+          destination: products
+          group: productsGroup # 소비자 그룹 : 마이크로서비스 인스턴스 중 한 인스턴스로만 product 토픽에 게시된 메시지를 전달
+          consumer:
+            maxAttempts: 3 # 데드 레터 대기열로 메시지를 옮기기 전에 재시도 세 번 수행
+            backOffInitialInterval: 500 # 첫 번째 재시도 : 500ms 후에 실행
+            backOffMaxInterval: 1000 # 나머지 두 번의 재시도는 1000ms 후에 실행
+            backOffMultiplier: 2.0
+      rabbit:
+        bindings:
+          input:
+            consumer:
+              autoBindDlq: true
+              republishToDlq: true
+      kafka:
+        bindings:
+          input:
+            consumer:
+              enableDlq: true
+        binder:
+          brokers: 127.0.0.1
+          defaultBrokerPort: 9092
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: "http://${app.eureka-username}:${app.eureka-password}@${app.eureka-server}:8761/eureka/"
+    # 이하 시작 시간과 중지된 마이크로서비스 인스턴스의 등록 해제에 걸리는 시간을 최소화하기 위한 것
+    initialInstanceInfoReplicationIntervalSeconds: 5
+    registryFetchIntervalSeconds: 5
+  instance:
+    leaseRenewalIntervalInSeconds: 5
+    leaseExpirationDurationInSeconds: 5
+
+logging:
+  level:
+    root: INFO
+    com.songko: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # UP, DOWN 결과뿐만 아니라 의존성에 대한 정보가 포함된 상태 점검 세부 정보를 표시
+        include: "*"
+  endpoint:
+    health:
+      #  HTTP를 사용해 모든 엔드포인트를 공개
+      show-details: always
+
+---
+server:
+  port: 8080
+
+app:
+  eureka-server: eureka
+
+spring:
+  profiles: docker
+  data:
+    mongodb:
+      host: mongodb
+  rabbitmq:
+    host: rabbitmq
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: kafka
